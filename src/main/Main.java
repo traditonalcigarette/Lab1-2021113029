@@ -1,5 +1,6 @@
 package main;
 
+import java.awt.geom.Line2D;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -176,11 +177,36 @@ class Graph {
     }
 
     private void drawEdge(Graphics2D g2d, Point startPoint, Point endPoint, int weight) {
+        // 绘制线条
         g2d.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+        // 绘制权重标签
         int labelX = (startPoint.x + endPoint.x) / 2;
         int labelY = (startPoint.y + endPoint.y) / 2;
         g2d.drawString(String.valueOf(weight), labelX, labelY);
+        // 计算箭头
+        drawArrowHead(g2d, startPoint, endPoint);
     }
+    private void drawArrowHead(Graphics2D g2d, Point startPoint, Point endPoint) {
+        double phi = Math.toRadians(20);
+        int barb = 15;
+
+        double dy = endPoint.y - startPoint.y;
+        double dx = endPoint.x - startPoint.x;
+        double theta = Math.atan2(dy, dx);
+        double rho = theta + phi;
+
+        int radius = 20;
+        // 修正箭头方位
+        int arrowX = endPoint.x - (int) (radius * Math.cos(theta));
+        int arrowY = endPoint.y - (int) (radius * Math.sin(theta));
+        for (int j = 0; j < 2; j++) {
+            double x = arrowX - barb * Math.cos(rho);
+            double y = arrowY - barb * Math.sin(rho);
+            g2d.draw(new Line2D.Double(arrowX, arrowY, x, y));
+            rho = theta - phi;
+        }
+    }
+
     public void readFromFile(String filePath) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(filePath));
         String line;
