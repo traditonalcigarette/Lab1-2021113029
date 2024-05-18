@@ -8,65 +8,267 @@ import java.util.List;
 import java.util.*;
 import javax.imageio.ImageIO;
 import java.awt.*;
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.awt.geom.Ellipse2D;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 
+// GUI交互式
 public class Main {
-    public static void main(String[] args) {
-        Graph graph = new Graph();
-        Scanner scanner = new Scanner(System.in);
-        try {
-            System.out.print("Enter text file path (Absolute path or relative path in this project):");
-            String readTxtFilePath = scanner.nextLine();
-            System.out.println(readTxtFilePath);
-            graph.readFromFile(readTxtFilePath);
-            graph.displayGraph();
-            graph.saveGraphToFile("resources/outputPng.png");
-            while (true) {
-                System.out.println("Enter command (1: Bridge Words, 2: Generate New Text, 3: Shortest Path, 4: Random Walk, 5: Exit):");
-                int command = scanner.nextInt();
-                scanner.nextLine(); // consume newline
+    private Graph graph;
+    private JFrame frame;
+    private JTextArea textArea;
+    private JTextField word1Field, word2Field, startWordField, endWordField;
+    private JTextArea newTextField;
+    private static final Logger logger = Logger.getLogger(Main.class.getName());
 
-                switch (command) {
-                    case 1:
-                        System.out.println("Enter word1:");
-                        String word1 = scanner.nextLine();
-                        System.out.println("Enter word2:");
-                        String word2 = scanner.nextLine();
-                        System.out.println(graph.findBridgeWords(word1, word2));
-                        break;
-                    case 2:
-                        System.out.println("Enter new text:");
-                        String newText = scanner.nextLine();
-                        System.out.println(graph.generateNewText(newText));
-                        break;
-                    case 3:
-                        System.out.println("Enter start word:");
-                        String startWord = scanner.nextLine();
-                        System.out.println("Enter end word:");
-                        String endWord = scanner.nextLine();
-                        System.out.println(graph.shortestPath(startWord, endWord));
-                        break;
-                    case 4:
-                        System.out.println("Enter start word for random walk:");
-                        System.out.println(graph.randomWalk());
-                        break;
-                    case 5:
-                        scanner.close();
-                        return;
-                    default:
-                        System.out.println("Invalid command.");
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                new Main().createAndShowGUI();
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "Exception occurred: {0}", e.getMessage());
+            }
+        });
+    }
+
+    private void createAndShowGUI() throws IOException {
+        graph = new Graph();
+        // 设置日志级别
+        logger.setLevel(Level.ALL);
+        // UI
+        frame = new JFrame("Graph Application");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 600);
+        frame.setLayout(new BorderLayout());
+
+        // 初始化文本区域，用于显示结果
+        textArea = new JTextArea();
+        textArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        frame.add(scrollPane, BorderLayout.CENTER);
+
+        // 创建控制面板
+        JPanel controlPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+
+        // 创建并添加控件到控制面板
+        addControl(controlPanel, gbc, 0, 0, 2, new JButton("Load Text File"), new LoadButtonListener());
+        addControl(controlPanel, gbc, 0, 1, 2, new JButton("Display Graph"), new DisplayButtonListener());
+
+        addControl(controlPanel, gbc, 0, 2, new JLabel("Word 1:"));
+        word1Field = new JTextField();
+        addControl(controlPanel, gbc, 1, 2, word1Field);
+
+        addControl(controlPanel, gbc, 0, 3, new JLabel("Word 2:"));
+        word2Field = new JTextField();
+        addControl(controlPanel, gbc, 1, 3, word2Field);
+
+        addControl(controlPanel, gbc, 0, 4, 2, new JButton("Find Bridge Words"), new BridgeWordsButtonListener());
+
+        addControl(controlPanel, gbc, 0, 5, new JLabel("New Text:"));
+        newTextField = new JTextArea(5, 20); // 设置行和列的数量以控制大小
+        JScrollPane newTextScrollPane = new JScrollPane(newTextField);
+        {
+            gbc.gridx = 1; // 设置组件在网格中的起始列位置为第 1 列
+            gbc.gridy = 5; // 设置组件在网格中的起始行位置为第 5 行
+            gbc.gridwidth = 2; // 设置组件跨越两列
+            gbc.fill = GridBagConstraints.BOTH; // 组件填充其显示区域，不仅水平填充，还包括垂直填充
+            gbc.weightx = 1.0; // 设置水平扩展权重为 1.0，意味着在调整窗口大小时，该组件会水平扩展
+            gbc.weighty = 1.0; // 设置垂直扩展权重为 1.0，意味着在调整窗口大小时，该组件会垂直扩展
+            controlPanel.add(newTextScrollPane, gbc); // 将配置好的组件添加到控制面板中
+            gbc.gridwidth = 1; // 重置 gridwidth 为 1，准备为下一个组件配置
+            gbc.fill = GridBagConstraints.HORIZONTAL; // 重置 fill 为水平填充，准备为下一个组件配置
+            gbc.weightx = 0; // 重置水平扩展权重为 0，准备为下一个组件配置
+            gbc.weighty = 0; // 重置垂直扩展权重为 0，准备为下一个组件配置
+        }
+        addControl(controlPanel, gbc, 0, 6, 2, new JButton("Generate New Text"), new GenerateTextButtonListener());
+
+        addControl(controlPanel, gbc, 0, 7, new JLabel("Start Word:"));
+        startWordField = new JTextField();
+        addControl(controlPanel, gbc, 1, 7, startWordField);
+
+        addControl(controlPanel, gbc, 0, 8, new JLabel("End Word:"));
+        endWordField = new JTextField();
+        addControl(controlPanel, gbc, 1, 8, endWordField);
+
+        addControl(controlPanel, gbc, 0, 9, 2, new JButton("Shortest Path"), new ShortestPathButtonListener());
+        addControl(controlPanel, gbc, 0, 10, 2, new JButton("Random Walk"), new RandomWalkButtonListener());
+
+        frame.add(controlPanel, BorderLayout.NORTH);
+        frame.setVisible(true);
+    }
+    private void addControl(JPanel panel, GridBagConstraints gbc, int x, int y, JComponent component) {
+        gbc.gridx = x;
+        gbc.gridy = y;
+        panel.add(component, gbc);
+    }
+    private void addControl(JPanel panel, GridBagConstraints gbc, int x, int y, int width, JComponent component, ActionListener listener) {
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.gridwidth = width;
+        if (component instanceof JButton) {
+            ((JButton) component).addActionListener(listener);
+        }
+        panel.add(component, gbc);
+        gbc.gridwidth = 1; // 重置为默认值
+    }
+    private class LoadButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(frame);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                try {
+                    graph.readFromFile(fileChooser.getSelectedFile().getPath());
+                    textArea.setText("File loaded successfully.\n");
+                } catch (IOException ex) {
+                    textArea.setText("Error reading file: " + ex.getMessage() + "\n");
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
-        } catch (GraphException e) {
-            System.err.println("Graph error: " + e.getMessage());
+        }
+    }
+
+    private class DisplayButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                graph.saveGraphToFile("outputPng.png");
+                textArea.setText("Graph displayed and saved as outputPng.png.\n");
+
+                // 显示保存的图片
+                // 读取并显示保存的图片
+                BufferedImage bufferedImage = ImageIO.read(new File("outputPng.png"));
+                ImageIcon imageIcon = new ImageIcon(bufferedImage);
+                JLabel imageLabel = new JLabel(imageIcon);
+                JOptionPane.showMessageDialog(frame, imageLabel, "Graph Image", JOptionPane.PLAIN_MESSAGE);
+            } catch (IOException ex) {
+                textArea.setText("Error saving graph: " + ex.getMessage() + "\n");
+            }
+        }
+    }
+
+    private class BridgeWordsButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String word1 = word1Field.getText();
+            String word2 = word2Field.getText();
+            String result;
+            try {
+                result = graph.findBridgeWords(word1, word2);
+            } catch (GraphException ex) {
+                result = ex.getMessage();
+            }
+            textArea.setText(result + "\n");
+        }
+    }
+
+    private class GenerateTextButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String newText = newTextField.getText();
+            String result;
+            try {
+                result = graph.generateNewText(newText);
+            } catch (GraphException ex) {
+                result = ex.getMessage();
+            }
+            textArea.setText(result + "\n");
+        }
+    }
+
+    private class ShortestPathButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String startWord = startWordField.getText();
+            String endWord = endWordField.getText();
+            String result;
+            try {
+                result = graph.shortestPath(startWord, endWord);
+            } catch (GraphException ex) {
+                result = ex.getMessage();
+            }
+            textArea.setText(result + "\n");
+        }
+    }
+
+    private class RandomWalkButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String result;
+            try {
+                result = graph.randomWalk();
+            } catch (GraphException ex) {
+                result = ex.getMessage();
+            }
+            textArea.setText(result + "\n");
         }
     }
 }
+// 命令行交互式
+//public class Main {
+//    public static void main(String[] args) {
+//        Graph graph = new Graph();
+//        Scanner scanner = new Scanner(System.in);
+//        try {
+//            System.out.print("Enter text file path (Absolute path or relative path in this project):");
+//            String readTxtFilePath = scanner.nextLine();
+//            System.out.println(readTxtFilePath);
+//            graph.readFromFile(readTxtFilePath);
+//            graph.displayGraph();
+//            graph.saveGraphToFile("resources/outputPng.png");
+//            while (true) {
+//                System.out.println("Enter command (1: Bridge Words, 2: Generate New Text, 3: Shortest Path, 4: Random Walk, 5: Exit):");
+//                int command = scanner.nextInt();
+//                scanner.nextLine(); // consume newline
+//
+//                switch (command) {
+//                    case 1:
+//                        System.out.println("Enter word1:");
+//                        String word1 = scanner.nextLine();
+//                        System.out.println("Enter word2:");
+//                        String word2 = scanner.nextLine();
+//                        System.out.println(graph.findBridgeWords(word1, word2));
+//                        break;
+//                    case 2:
+//                        System.out.println("Enter new text:");
+//                        String newText = scanner.nextLine();
+//                        System.out.println(graph.generateNewText(newText));
+//                        break;
+//                    case 3:
+//                        System.out.println("Enter start word:");
+//                        String startWord = scanner.nextLine();
+//                        System.out.println("Enter end word:");
+//                        String endWord = scanner.nextLine();
+//                        System.out.println(graph.shortestPath(startWord, endWord));
+//                        break;
+//                    case 4:
+//                        System.out.println("Enter start word for random walk:");
+//                        System.out.println(graph.randomWalk());
+//                        break;
+//                    case 5:
+//                        scanner.close();
+//                        return;
+//                    default:
+//                        System.out.println("Invalid command.");
+//                }
+//            }
+//        } catch (IOException e) {
+//            System.err.println("Error reading file: " + e.getMessage());
+//        } catch (GraphException e) {
+//            System.err.println("Graph error: " + e.getMessage());
+//        }
+//    }
+//}
+
 
 class Node {
     private final String word;
@@ -208,12 +410,18 @@ class Graph {
     }
 
     public void readFromFile(String filePath) throws IOException {
+        init();
         BufferedReader reader = new BufferedReader(new FileReader(filePath));
         String line;
         while ((line = reader.readLine()) != null) {
             processLine(line);
         }
         reader.close();
+    }
+    private void init() {
+        // Clear Graph at last time
+        nodes.clear();
+        adjList.clear();
     }
 
     private void processLine(String line) {
