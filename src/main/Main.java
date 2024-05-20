@@ -1,9 +1,7 @@
 package main;
 
 import java.awt.geom.Line2D;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.List;
 import java.util.*;
 import javax.imageio.ImageIO;
@@ -12,7 +10,6 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.awt.geom.Ellipse2D;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -143,7 +140,6 @@ public class Main {
             try {
                 graph.saveGraphToFile("outputPng.png");
                 textArea.setText("Graph displayed and saved as outputPng.png.\n");
-
                 // 显示保存的图片
                 // 读取并显示保存的图片
                 BufferedImage bufferedImage = ImageIO.read(new File("outputPng.png"));
@@ -163,7 +159,7 @@ public class Main {
             String word2 = word2Field.getText();
             String result;
             try {
-                result = graph.findBridgeWords(word1, word2);
+                result = graph.queryBridgeWords(word1, word2);
             } catch (GraphException ex) {
                 result = ex.getMessage();
             }
@@ -192,7 +188,7 @@ public class Main {
             String endWord = endWordField.getText();
             String result;
             try {
-                result = graph.shortestPath(startWord, endWord);
+                result = graph. calcShortestPath(startWord, endWord);
             } catch (GraphException ex) {
                 result = ex.getMessage();
             }
@@ -206,9 +202,15 @@ public class Main {
             String result;
             try {
                 result = graph.randomWalk();
+                OutputStream f = new FileOutputStream("randomWalk.txt");
+                f.write(result.getBytes());
+                f.close();
             } catch (GraphException ex) {
                 result = ex.getMessage();
+            }catch (IOException ex) {
+                throw new RuntimeException(ex);
             }
+
             textArea.setText(result + "\n");
         }
     }
@@ -456,7 +458,7 @@ class Graph {
         }
     }
 
-    public String findBridgeWords(String word1, String word2) throws GraphException {
+    public String queryBridgeWords(String word1, String word2) throws GraphException {
         if (!nodes.containsKey(word1) || !nodes.containsKey(word2)) {
             return "No word1 or word2 in the graph!";
         }
@@ -478,16 +480,16 @@ class Graph {
         }
     }
 
-    public String generateNewText(String newText) throws GraphException {
-        newText = newText.replaceAll("[^a-zA-Z\\s]", " ").toLowerCase();
-        String[] words = newText.split("\\s+");
+    public String generateNewText(String inputText) throws GraphException {
+        inputText = inputText.replaceAll("[^a-zA-Z\\s]", " ").toLowerCase();
+        String[] words = inputText.split("\\s+");
         StringBuilder result = new StringBuilder();
 
         for (int i = 0; i < words.length - 1; i++) {
             String word1 = words[i];
             String word2 = words[i + 1];
             result.append(word1).append(" ");
-            String bridgeWordResult = findBridgeWords(word1, word2);
+            String bridgeWordResult = queryBridgeWords(word1, word2);
             if (!bridgeWordResult.startsWith("No")) {
                 String[] bridgeWords = bridgeWordResult.split(": ")[1].split(", ");
                 if (bridgeWords.length > 0) {
@@ -499,8 +501,8 @@ class Graph {
         return result.toString();
     }
 
-    public String shortestPath(String startWord, String endWord) throws GraphException {
-        if (!nodes.containsKey(startWord) || !nodes.containsKey(endWord)) {
+    public String  calcShortestPath(String word1, String word2) throws GraphException {
+        if (!nodes.containsKey(word1) || !nodes.containsKey(word2)) {
             return "No startWord or endWord in the graph!";
         }
 
@@ -513,15 +515,15 @@ class Graph {
             distances.put(node, Integer.MAX_VALUE);
             previousNodes.put(node, null);
         }
-        distances.put(startWord, 0);
+        distances.put(word1, 0);
 
-        Node startNode = nodes.get(startWord);
+        Node startNode = nodes.get(word1);
         startNode.setDistance(0);
         queue.add(startNode);
 
         while (!queue.isEmpty()) {
             Node current = queue.poll();
-            if (current.getWord().equals(endWord)) {
+            if (current.getWord().equals(word2)) {
                 break;
             }
 
@@ -537,17 +539,17 @@ class Graph {
             }
         }
 
-        if (distances.get(endWord) == Integer.MAX_VALUE) {
-            return "No path from " + startWord + " to " + endWord + "!";
+        if (distances.get(word2) == Integer.MAX_VALUE) {
+            return "No path from " + word1 + " to " + word2 + "!";
         }
 
         List<String> path = new LinkedList<>();
-        for (String at = endWord; at != null; at = previousNodes.get(at)) {
+        for (String at = word2; at != null; at = previousNodes.get(at)) {
             path.add(0, at);
         }
 
-        return "Shortest path from " + startWord + " to " + endWord + " is: " + String.join(" -> ", path) +
-                " with total weight " + distances.get(endWord);
+        return "Shortest path from " + word1 + " to " + word2 + " is: " + String.join(" -> ", path) +
+                " with total weight " + distances.get(word2);
     }
 
     public String randomWalk() throws GraphException {
@@ -585,7 +587,6 @@ class Graph {
                 }
             }
         }
-
         return "Random walk starting from " + startWord + ": " + walk;
     }
 }
