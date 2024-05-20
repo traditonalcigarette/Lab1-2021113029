@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 
+//git
 // GUI交互式
 public class Main {
     private Graph graph;
