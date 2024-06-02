@@ -1,4 +1,4 @@
-It is strongly recommended to use the latest release version of Apache Maven to take advantage of newest features and bug fixes.
-
-If you still want to use an old version, you can find more information in the Maven Releases History and can download files from 
-the Maven 3 archives for versions 3.0.4+ and legacy archives for earlier releases.
+The cat sat on the mat. The mat was warm and soft. The cat liked the mat. 
+The cat purred on the mat. The cat was happy. The mat was warm. 
+The cat sat and purred. The mat was soft and warm. The cat liked the mat. 
+The mat was warm and soft. The cat purred on the mat.

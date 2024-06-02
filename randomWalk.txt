@@ -1,1 +1,1 @@
-Random walk starting from is: is -> very -> nice -> good
+Random walk starting from cat: cat -> sat -> and -> warm -> the -> mat -> was -> soft -> the -> cat
